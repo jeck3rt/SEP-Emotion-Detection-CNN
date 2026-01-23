@@ -1,7 +1,7 @@
 #
 import torch.nn as nn
 
-#This is only the model so it can be loaded into ourmodel.py
+#This is only the model so it can be loaded into demo.py
 
 class CNN(nn.Module):
     def __init__(self):
@@ -93,4 +93,5 @@ class CNN(nn.Module):
 
         x = self.finalblock(op3)
         
+
         return x
