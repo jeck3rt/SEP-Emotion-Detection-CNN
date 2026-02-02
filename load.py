@@ -29,7 +29,7 @@ model.to(device)
 
 
 state_dict = torch.load(
-    current_folder / "Resnetdiversified.pth",
+    current_folder / "ResNetdiversified.pth",
     map_location=device
 )
 
@@ -112,4 +112,5 @@ avg_loss = eval_loss / len(data_loader)
 accuracy = correct / total
 
 print(avg_loss)
+
 print(accuracy)
