@@ -102,7 +102,7 @@ def emotion_detection(frame,faces):
 
         #initialize Grad-CAM
         classes = [ClassifierOutputTarget(predicted_class)] 
-        gradlayer = [model.conv3_2_2]
+         gradlayer = [model.conv3_1_3, model.conv3_2_1, model.conv3_2_2]
 
         cam = GradCAM(model=model, target_layers=gradlayer) 
         heatmap = cam(input_tensor=tensorimage,targets=classes) 
@@ -148,3 +148,4 @@ while True:
 
 webcam.release()
 cv2.destroyAllWindows()
+
