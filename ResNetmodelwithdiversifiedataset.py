@@ -77,10 +77,10 @@ def precrop_dataset(src_root, dst_root):
         out_path = out_dir / Path(img_path).name
         cropped.save(out_path)
 
-if not (current_folder/ "traindiv_cropped").is_dir:
+if not (current_folder/ "traindiv_cropped").is_dir():
     precrop_dataset((current_folder / "traindiv"), (current_folder / "traindiv_cropped"))
 
-if not (current_folder/ "testdiv_cropped").is_dir:
+if not (current_folder/ "testdiv_cropped").is_dir():
     precrop_dataset((current_folder / "testdiv"), (current_folder / "testdiv_cropped"))
 
 #transforms for data
@@ -289,4 +289,5 @@ accuracy = correct / total
 
 print(avg_loss)
 print(accuracy)
+
 
