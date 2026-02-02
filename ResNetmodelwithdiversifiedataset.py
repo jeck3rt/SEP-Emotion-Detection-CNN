@@ -21,7 +21,7 @@ from pathlib import Path
 current_folder = Path(__file__).resolve().parent
 ##parameters
 batch_size = 64
-epochs = 75
+epochs = 350
 num_labels = 6 
 input_size = 64*64
 
@@ -54,9 +54,37 @@ class Facefinder():
         return face   
 
 
+face_transform = transforms.Compose([
+    Facefinder()   # ONLY face detection here
+])
+
+
+#precropping the images to save computing time
+def precrop_dataset(src_root, dst_root):
+    dst_root.mkdir(parents=True, exist_ok=True)
+
+    dataset = datasets.ImageFolder(root=src_root, transform=face_transform)
+
+    for img_path, label in dataset.samples:
+        class_name = dataset.classes[label]
+
+        img = Image.open(img_path).convert("RGB")
+        cropped = face_transform(img)
+
+        out_dir = dst_root / class_name
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        out_path = out_dir / Path(img_path).name
+        cropped.save(out_path)
+
+if not (current_folder/ "traindiv_cropped").is_dir:
+    precrop_dataset((current_folder / "traindiv"), (current_folder / "traindiv_cropped"))
+
+if not (current_folder/ "testdiv_cropped").is_dir:
+    precrop_dataset((current_folder / "testdiv"), (current_folder / "testdiv_cropped"))
+
 #transforms for data
 train_transform = transforms.Compose([
-    Facefinder(),
     transforms.RandomHorizontalFlip(p=0.5),
     transforms.RandomRotation(10),
     transforms.RandomAffine(
@@ -72,25 +100,15 @@ train_transform = transforms.Compose([
 ])
 
 test_transform = transforms.Compose([
-     Facefinder(),
      transforms.Grayscale(1),
      transforms.Resize((64,64)),
      transforms.ToTensor(),
      transforms.Normalize(0.5,0.5)
 ])
 
-
 #data and loaders
-train_data = datasets.ImageFolder(
-    root=current_folder / "traindiv",
-    transform=train_transform
-)
-
-test_data = datasets.ImageFolder(
-    root=current_folder / "testdiv",
-    transform=test_transform
-)
-
+train_data = datasets.ImageFolder(root=current_folder / "traindiv_cropped", transform = train_transform)
+test_data = datasets.ImageFolder(root=current_folder / "testdiv_cropped", transform = test_transform)
 
 
 
@@ -144,7 +162,7 @@ class CNN(nn.Module):
                                         nn.Linear(in_features=128, out_features=512),
                                         nn.ReLU(),
                                         nn.Dropout(0.5),
-                                        nn.Linear(in_features=512, out_features=6)
+                                        nn.Linear(in_features=512, out_features=num_labels)
 
         )
 
@@ -195,16 +213,16 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 myCNN = CNN().to(device)
 
 #DataLoader
-train_loader = DataLoader(dataset=train_data, batch_size=batch_size,shuffle=True)
-data_loader = DataLoader(dataset=test_data, batch_size=batch_size,shuffle=False)
+train_loader = DataLoader(dataset=train_data, batch_size=batch_size,shuffle=True, num_workers=8)
+data_loader = DataLoader(dataset=test_data, batch_size=batch_size,shuffle=False, num_workers=8)
 
 #Loss and Optimizer Functions
-evalrawweights = [6.18, 20.39, 6.05, 3.55, 5.36, 6.42]
+evalrawweights = [sum(class_counts_test)/c for c in class_counts_test]
 meanrawweight = sum(evalrawweights) / len(evalrawweights)
 evalweights = np.array(evalrawweights) / meanrawweight
 evalweights = torch.tensor(evalweights, dtype=torch.float32).to(device)
 
-trainrawweights = [6.27, 12.35, 6.24, 3.75, 5.93, 6.10]
+trainrawweights = [sum(class_counts_train)/c for c in class_counts_train]
 meanevalweight = sum(trainrawweights) / len(trainrawweights)
 trainweights = np.array(trainrawweights) / meanevalweight
 trainweights = torch.tensor(trainweights, dtype=torch.float32).to(device)
@@ -219,17 +237,20 @@ optimizer = optim.Adam(myCNN.parameters(), lr=0.0001)
 myCNN.train()
 
 for epoch in range(epochs):
+        scaler = torch.amp.GradScaler()
+    
     for step, (data, targets) in enumerate(tqdm(train_loader)):
         data = data.to(device)
         targets = targets.to(device)
 
-        scores = myCNN(data)
-        loss = trainingloss(scores, targets)
+        with torch.amp.autocast(device):
+            scores = myCNN(data)
+            loss = trainingloss(scores, targets)
 
         optimizer.zero_grad()
-        loss.backward()
-
-        optimizer.step()
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
     
     accuracy= []
     
@@ -268,3 +289,4 @@ accuracy = correct / total
 
 print(avg_loss)
 print(accuracy)
+
