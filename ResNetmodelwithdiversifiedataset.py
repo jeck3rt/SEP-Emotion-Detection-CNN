@@ -14,6 +14,7 @@ import cv2
 
 from pathlib import Path
 
+from collections import Counter
 
 ##emotion_labels = ["surprised","fearful","disgusted","happy","sad","angry"]
 
@@ -77,11 +78,15 @@ def precrop_dataset(src_root, dst_root):
         out_path = out_dir / Path(img_path).name
         cropped.save(out_path)
 
-if not (current_folder/ "traindiv_cropped").is_dir():
-    precrop_dataset((current_folder / "traindiv"), (current_folder / "traindiv_cropped"))
+if not (current_folder/ "train_cropped").is_dir():
+    precrop_dataset((current_folder / "train"), (current_folder / "train_cropped"))
 
-if not (current_folder/ "testdiv_cropped").is_dir():
-    precrop_dataset((current_folder / "testdiv"), (current_folder / "testdiv_cropped"))
+if not (current_folder/ "test_cropped").is_dir():
+    precrop_dataset((current_folder / "test"), (current_folder / "test_cropped"))
+
+
+if not (current_folder/ "validation_cropped").is_dir():
+    precrop_dataset((current_folder / "validation"), (current_folder / "validation_cropped"))
 
 #transforms for data
 train_transform = transforms.Compose([
@@ -107,9 +112,9 @@ test_transform = transforms.Compose([
 ])
 
 #data and loaders
-train_data = datasets.ImageFolder(root=current_folder / "traindiv_cropped", transform = train_transform)
-test_data = datasets.ImageFolder(root=current_folder / "testdiv_cropped", transform = test_transform)
-
+train_data = datasets.ImageFolder(root=current_folder / "train_cropped", transform = train_transform)
+test_data = datasets.ImageFolder(root=current_folder / "test_cropped", transform = test_transform)
+eval_data = datasets.ImageFolder(root=current_folder / "validation_cropped", transform = test_transform)
 
 
 
@@ -215,8 +220,22 @@ myCNN = CNN().to(device)
 #DataLoader
 train_loader = DataLoader(dataset=train_data, batch_size=batch_size,shuffle=True, num_workers=8)
 data_loader = DataLoader(dataset=test_data, batch_size=batch_size,shuffle=False, num_workers=8)
+eval_loader = DataLoader(dataset=eval_data, batch_size=batch_size,shuffle=False, num_workers=8)
+
+
 
 #Loss and Optimizer Functions
+
+train_targets = train_data.targets
+train_counter = Counter(train_targets)
+class_counts_train = [train_counter[i] for i in range(len(train_data.classes))]
+
+test_targets = test_data.targets
+test_counter = Counter(test_targets)
+class_counts_test = [test_counter[i] for i in range(len(test_data.classes))]
+
+
+
 evalrawweights = [sum(class_counts_test)/c for c in class_counts_test]
 meanrawweight = sum(evalrawweights) / len(evalrawweights)
 evalweights = np.array(evalrawweights) / meanrawweight
@@ -233,11 +252,15 @@ optimizer = optim.Adam(myCNN.parameters(), lr=0.0001)
 
 
 
+
+best_loss = 100 # This is just a high starting number so the first loss value is the the actual best 
+grace_period  = 0
+
 #Training Loop
-myCNN.train()
 
 for epoch in range(epochs):
-        scaler = torch.amp.GradScaler()
+    myCNN.train()
+    scaler = torch.amp.GradScaler()
     
     for step, (data, targets) in enumerate(tqdm(train_loader)):
         data = data.to(device)
@@ -251,43 +274,55 @@ for epoch in range(epochs):
         scaler.scale(loss).backward()
         scaler.step(optimizer)
         scaler.update()
-    
+
     accuracy= []
     
 
 
-torch.save(
-    myCNN.state_dict(),
-    current_folder / "ResNetdiversified.pth"
-)
+    #eval loop
+    myCNN.eval()  
+
+    correct = 0
+    total = 0
+    eval_loss = 0.0
+
+    with torch.no_grad():  
+        for data, targets in eval_loader: 
+            data = data.to(device)
+            targets = targets.to(device)
+
+            outputs = myCNN(data)
+            loss = evalLoss(outputs, targets)
+
+            eval_loss += loss.item()
+            predictions = outputs.argmax(dim=1)
+
+            correct += (predictions == targets).sum().item()
+            total += targets.size(0)
+
+    avg_loss = eval_loss / len(data_loader)
+    accuracy = correct / total
+    print(f"Average loss:{avg_loss},accuracy of current weights:{accuracy}, current epoch:{epoch}")
+
+    if(epoch >20):
+        if(avg_loss <= best_loss ):
+    
+            best_loss = avg_loss
+            torch.save(
+            myCNN.state_dict(),
+            current_folder / "ResNetbetter.pth"
+            ) 
+            grace_period = 0
+        elif(avg_loss > best_loss ):
+            grace_period +=1
+            if(grace_period >=10):
+                print("Overfitting stopping now zzzZZZzzz")
+                break
 
 
 
-#eval loop
-myCNN.eval()  
 
-correct = 0
-total = 0
-eval_loss = 0.0
 
-with torch.no_grad():  
-    for data, targets in data_loader: 
-        data = data.to(device)
-        targets = targets.to(device)
 
-        outputs = myCNN(data)
-        loss = evalLoss(outputs, targets)
-
-        eval_loss += loss.item()
-        predictions = outputs.argmax(dim=1)
-
-        correct += (predictions == targets).sum().item()
-        total += targets.size(0)
-
-avg_loss = eval_loss / len(data_loader)
-accuracy = correct / total
-
-print(avg_loss)
-print(accuracy)
 
 
