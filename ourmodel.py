@@ -31,16 +31,12 @@ current_folder = Path(__file__).resolve().parent
 model = CNN()
 model.to(device)
 
-with open(current_folder / "output.csv", "w", newline="") as w:
-            writer = csv.writer(w)
-            for emotion in emotion_labels:
-                writer.writerow([emotion])
-        
+
 
 
 
 state_dict = torch.load(
-    current_folder / "ResNetdiversified.pth",
+    current_folder / "ResNetbetter.pth",
     map_location=device
 )
 
@@ -102,24 +98,20 @@ def emotion_detection(frame,faces):
 
         #initialize Grad-CAM
         classes = [ClassifierOutputTarget(predicted_class)] 
-         gradlayer = [model.conv3_1_3, model.conv3_2_1, model.conv3_2_2]
+        gradlayer = [model.conv3_1_3, model.conv3_2_1, model.conv3_2_2]
 
         cam = GradCAM(model=model, target_layers=gradlayer) 
         heatmap = cam(input_tensor=tensorimage,targets=classes) 
         heatmap = heatmap.squeeze(0) 
         heatmap = heatmap*255 
         heatmap = Image.fromarray(np.uint8(heatmap)) 
-        heatmap = heatmap.resize((h, w)) 
+        heatmap = heatmap.resize((w, h)) 
         heatmap= np.array(heatmap) 
         heatmap = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET) 
         heatmap_bgr = cv2.cvtColor(face, cv2.COLOR_GRAY2BGR) 
         heatmap = cv2.addWeighted(heatmap, 0.3, heatmap_bgr, 1 - 0.3, 0) 
         frame[y:y+h, x:x+w] = heatmap 
-        with open(current_folder / "output.csv", "a", newline="") as w: 
-            writer = csv.writer(w) 
-            probs_np = probs_np.flatten() 
-            for probability in probs_np: 
-                 writer.writerow([probability])
+
     
       
 
@@ -148,4 +140,7 @@ while True:
 
 webcam.release()
 cv2.destroyAllWindows()
+
+
+
 
