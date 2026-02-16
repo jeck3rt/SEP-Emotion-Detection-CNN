@@ -10,7 +10,7 @@ from torchvision.transforms import ToTensor
 
 
 from PIL import Image
-from Resnetmodeldiversified import CNN
+from cnn import CNN
 
 
 import cv2
@@ -151,3 +151,4 @@ accuracy = correct / total
 
 print("Loss:", avg_loss)
 print("Accuracy:", accuracy)
+
