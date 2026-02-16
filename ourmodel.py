@@ -36,7 +36,7 @@ model.to(device)
 
 
 state_dict = torch.load(
-    current_folder / "ResNetbetter.pth",
+    current_folder / "Resnetbestweightslrweight0.001.pth",
     map_location=device
 )
 
@@ -63,7 +63,7 @@ face_classifier = cv2.CascadeClassifier(
 
 
 
-webcam = cv2.VideoCapture(0)
+webcam = cv2.VideoCapture(2)
 
 
 def face_detection_box(vid):

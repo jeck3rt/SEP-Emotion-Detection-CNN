@@ -14,6 +14,7 @@ from Resnetmodeldiversified import CNN
 
 
 import cv2
+import csv
 
 from pathlib import Path
 
@@ -27,9 +28,19 @@ current_folder = Path(__file__).resolve().parent
 model = CNN()
 model.to(device)
 
+emotion_labels = ["angry","disgust","fear","happy","sad","surprise"]
+
+
+with open(current_folder / "output.csv", "w", newline="") as w:
+            writer = csv.writer(w)
+            for emotion in emotion_labels:
+                writer.writerow([emotion])
+
+
+
 
 state_dict = torch.load(
-    current_folder / "ResNetdiversified.pth",
+    current_folder / "Resnetbestweightslrweight0.001.pth",
     map_location=device
 )
 
@@ -39,7 +50,7 @@ face_classifier = cv2.CascadeClassifier(
 )
 
 
-
+#
 
 class Facefinder():
     def __call__(self, image):
@@ -63,38 +74,51 @@ class Facefinder():
 
 
 
-
 model.eval()
 
-img_transforms = transforms.Compose(
-    [
+img_transforms = transforms.Compose([
     Facefinder(),
     transforms.Grayscale(1),
     transforms.Resize((64,64)),
     transforms.ToTensor(),
-    transforms.Normalize(0.5,0.5)
+    transforms.Normalize((0.5,), (0.5,))
 ])
 
 
-valdata  = datasets.ImageFolder(
-    root=current_folder / "test",#Add the eval folder here
+########################## for evaluation on other datasets change the root here #################################################################################
+
+valdata = datasets.ImageFolder(
+    root=current_folder / "test",
     transform=img_transforms
 )
 
-data_loader = DataLoader(dataset=valdata,batch_size=32,shuffle=False)
-
+data_loader = DataLoader(dataset=valdata, batch_size=256, shuffle=False)
 
 lossFunction = nn.CrossEntropyLoss()
-
 model.load_state_dict(state_dict)
-
-
 
 correct = 0
 total = 0
 eval_loss = 0.0
 
-with torch.no_grad():  
+
+image_paths = [sample[0] for sample in valdata.samples]
+image_index = 0
+
+
+with open(current_folder / "output.csv", "w", newline="") as f:
+    writer = csv.writer(f)
+    writer.writerow([
+        "img",
+        "angryoutput",
+        "disgustoutput",
+        "fearoutput",
+        "happyoutput",
+        "sadoutput",
+        "surpriseoutput"
+    ])
+
+with torch.no_grad():
     for data, targets in data_loader:
         data = data.to(device)
         targets = targets.to(device)
@@ -103,14 +127,27 @@ with torch.no_grad():
         loss = lossFunction(outputs, targets)
 
         eval_loss += loss.item()
-        predictions = outputs.argmax(dim=1)
 
+        predictions = outputs.argmax(dim=1)
         correct += (predictions == targets).sum().item()
         total += targets.size(0)
+
+        probs = F.softmax(outputs, dim=1)
+        probs_np = probs.cpu().numpy()
+
+        # Append results to CSV
+        with open(current_folder / "output.csv", "a", newline="") as f:
+            writer = csv.writer(f)
+
+            for prob in probs_np:
+                img_name = Path(image_paths[image_index]).name
+                writer.writerow([img_name] + prob.tolist())
+                image_index += 1
+
 
 avg_loss = eval_loss / len(data_loader)
 accuracy = correct / total
 
-print(avg_loss)
 
-print(accuracy)
+print("Loss:", avg_loss)
+print("Accuracy:", accuracy)
