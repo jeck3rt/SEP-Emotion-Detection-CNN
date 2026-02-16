@@ -40,7 +40,7 @@ with open(current_folder / "output.csv", "w", newline="") as w:
 
 
 state_dict = torch.load(
-    current_folder / "Resnetbestweightslrweight0.001.pth",
+    current_folder / "weights.pth",
     map_location=device
 )
 
@@ -151,4 +151,5 @@ accuracy = correct / total
 
 print("Loss:", avg_loss)
 print("Accuracy:", accuracy)
+
 
