@@ -6,7 +6,7 @@ from torchvision import transforms
 
 
 from PIL import Image
-from Resnetmodeldiversified import CNN
+from cnn import CNN
 
 from pytorch_grad_cam import GradCAM
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
@@ -140,6 +140,7 @@ while True:
 
 webcam.release()
 cv2.destroyAllWindows()
+
 
 
 
