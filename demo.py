@@ -36,7 +36,7 @@ model.to(device)
 
 
 state_dict = torch.load(
-    current_folder / "Resnetbestweightslrweight0.001.pth",
+    current_folder / "weights.pth",
     map_location=device
 )
 
@@ -140,6 +140,7 @@ while True:
 
 webcam.release()
 cv2.destroyAllWindows()
+
 
 
 
