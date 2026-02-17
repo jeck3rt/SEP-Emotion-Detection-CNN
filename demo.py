@@ -92,7 +92,7 @@ def emotion_detection(frame,faces):
 
         predicted_class = np.argmax(probs_np)
 
-        cv2.putText(frame, str(predicted_class), (x, y - 10),
+        cv2.putText(frame, str(predicted_class) + " " + emotion_labels[predicted_class], (x, y - 10),
             cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
 
@@ -140,6 +140,7 @@ while True:
 
 webcam.release()
 cv2.destroyAllWindows()
+
 
 
 
