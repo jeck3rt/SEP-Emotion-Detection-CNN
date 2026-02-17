@@ -18,7 +18,7 @@ import csv
 
 from pathlib import Path
 
-####################################################################################script for evaluation only#############################################################################
+#################################################################################### script for evaluation only #############################################################################
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -151,6 +151,7 @@ accuracy = correct / total
 
 print("Loss:", avg_loss)
 print("Accuracy:", accuracy)
+
 
 
 
