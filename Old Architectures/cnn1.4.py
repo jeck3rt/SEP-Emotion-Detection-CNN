@@ -23,7 +23,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 ##parameters
 batch_size = 100
 epochs = 100
-num_labels = 7
+num_labels = 6
 input_size = 64*64
 
 
@@ -71,13 +71,9 @@ class CNN(nn.Module):
         self.pool3 = nn.MaxPool2d(kernel_size=2)
         self.fc1 = nn.Linear(in_features=64*8*8,out_features=120) 
         self.fc2 = nn.Linear(120,84)
-        self.fc3 = nn.Linear(84,7)
+        self.fc3 = nn.Linear(84,6)
         self.relu = torch.nn.ReLU()
          
-        self.layer1 = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=16, kernel_size=5, padding=2, stride=1)
-                                    
-                                    
-                                    )
 
 
     def forward(self, x):
@@ -170,3 +166,4 @@ accuracy = correct / total
 
 print(avg_loss)
 print(accuracy)
+
