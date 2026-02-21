@@ -111,6 +111,41 @@ def emotion_detection(frame,faces):
         heatmap_bgr = cv2.cvtColor(face, cv2.COLOR_GRAY2BGR) 
         heatmap = cv2.addWeighted(heatmap, 0.3, heatmap_bgr, 1 - 0.3, 0) 
         frame[y:y+h, x:x+w] = heatmap 
+    return probs_np if len(faces) > 0 else None
+
+
+
+def draw_emotion_bars(frame, probs):
+    panel_w = 220
+    panel_h = 20 + len(emotion_labels) * 30
+    margin = 10
+
+    h, w = frame.shape[:2]
+    x_start = w - panel_w - margin
+    y_start = h - panel_h - margin
+
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (x_start, y_start), (x_start + panel_w, y_start + panel_h), (30, 30, 30), -1)
+    cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+
+    for i, (label, prob) in enumerate(zip(emotion_labels, probs)):
+        y = y_start + 15 + i * 30
+        bar_x = x_start + 90
+        bar_max_w = 110
+        bar_h = 14
+
+        color = (0, 255, 0) if i == np.argmax(probs) else (200, 120, 50)
+
+        cv2.putText(frame, f"{label}:", (x_start + 5, y + 11),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1)
+
+        cv2.rectangle(frame, (bar_x, y), (bar_x + bar_max_w, y + bar_h), (80, 80, 80), -1)
+
+        filled_w = int(prob * bar_max_w)
+        cv2.rectangle(frame, (bar_x, y), (bar_x + filled_w, y + bar_h), color, -1)
+
+        cv2.putText(frame, f"{prob*100:.0f}%", (bar_x + bar_max_w + 3, y + 11),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
 
     
       
@@ -127,10 +162,13 @@ while True:
         video_frame
     )
 
-    prediction = emotion_detection(
+    probs = emotion_detection(
         video_frame, faces
     )
-
+    
+    if probs is not None:
+        draw_emotion_bars(video_frame, probs)
+        
     cv2.imshow(
         "Model", video_frame
     )
