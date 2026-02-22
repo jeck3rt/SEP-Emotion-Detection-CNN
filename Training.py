@@ -287,17 +287,18 @@ if __name__ == "__main__":
     val_accuracies = []  
 
     #Training Loop
-    scaler = torch.amp.GradScaler()
+    amp_device = "cuda" if device == "cuda" else "cpu"
+    scaler = torch.amp.GradScaler(amp_device)
     for epoch in range(epochs):
         myCNN.train()
-        
+
         epoch_train_loss = 0.0
-        
+
         for step, (data, targets) in enumerate(tqdm(train_loader)):
             data = data.to(device)
             targets = targets.to(device)
 
-            with torch.amp.autocast(device):
+            with torch.amp.autocast(amp_device):
                 scores = myCNN(data)
                 loss = trainingloss(scores, targets)
 
